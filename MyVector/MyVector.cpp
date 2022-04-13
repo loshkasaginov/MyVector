@@ -1,31 +1,21 @@
-﻿#include <iostream>
-
-int log2(int x)
-{
-    int i = 1;
-    while (i < x)
-    {
-        i *= 2;
-    }
-    return i;
-}
+#include <iostream>
 
 template <class T>
 class MyVector
 {
 private:
-    T* _data;
+    T *_data;
     int _length;
     int _capacity;
 
 public:
     MyVector();
-    MyVector(const MyVector<T>& other);
-    MyVector(T* array, int length);
+    MyVector(const MyVector<T> &other);
+    MyVector(T *array, int length);
     ~MyVector();
-    void operator=(const MyVector<T>& other);
-    bool operator==(const MyVector<T>& other);
-    bool operator!=(const MyVector<T>& other);
+    void operator=(const MyVector<T> &other);
+    bool operator==(const MyVector<T> &other);
+    bool operator!=(const MyVector<T> &other);
     bool empty();
     int size();
     int length();
@@ -37,15 +27,17 @@ public:
     void clear();
     void push_back(T element);
     void pop_back();
-    void insert(int index, T element);
-    void insert(int index, T* element, int count);
-    void insert(int index, const MyVector<T>& vector);
+    void reserve(int count);
+    void shrink();
+    void insert(int index, T element, int count = 1);
+    void insert(int index, T* array, int length);
+    void insert(int index, const MyVector<T> &vector);
     void erase(int index, int count = 1);
 };
 template <class T>
 MyVector<T>::MyVector() : _data(new T[1]), _length(0), _capacity(1) {}
 template <class T>
-MyVector<T>::MyVector(const MyVector<T>& other) : _length(other._length), _capacity(other._capacity)
+MyVector<T>::MyVector(const MyVector<T> &other) : _length(other._length), _capacity(other._capacity)
 {
     _data = new T[_capacity];
     for (int i = 0; i < _length; i++)
@@ -54,8 +46,13 @@ MyVector<T>::MyVector(const MyVector<T>& other) : _length(other._length), _capac
     }
 }
 template <class T>
-MyVector<T>::MyVector(T* array, int length) : _length(length), _capacity(log2(length))
+MyVector<T>::MyVector(T *array, int length) : _length(length)
 {
+    _capacity = 1;
+    while (_capacity < _length)
+    {
+        _capacity *= 2;
+    }
     _data = new T[_capacity];
     for (int i = 0; i < length; i++)
     {
@@ -68,7 +65,7 @@ MyVector<T>::~MyVector()
     delete[] _data;
 }
 template <class T>
-void MyVector<T>::operator=(const MyVector<T>& other)
+void MyVector<T>::operator=(const MyVector<T> &other)
 {
     _length = other._length;
     _capacity = other._capacity;
@@ -80,7 +77,7 @@ void MyVector<T>::operator=(const MyVector<T>& other)
     }
 }
 template <class T>
-bool MyVector<T>::operator==(const MyVector<T>& other)
+bool MyVector<T>::operator==(const MyVector<T> &other)
 {
     if (_length != other._length)
     {
@@ -96,7 +93,7 @@ bool MyVector<T>::operator==(const MyVector<T>& other)
     return true;
 }
 template <class T>
-bool MyVector<T>::operator!=(const MyVector<T>& other)
+bool MyVector<T>::operator!=(const MyVector<T> &other)
 {
     return !(*this == other);
 }
@@ -161,7 +158,7 @@ void MyVector<T>::push_back(T element)
     if (_length + 1 > _capacity)
     {
         _capacity *= 2;
-        T* data = new T[_capacity];
+        T *data = new T[_capacity];
         for (int i = 0; i < _length; i++)
         {
             data[i] = _data[i];
@@ -183,7 +180,7 @@ void MyVector<T>::pop_back()
     if (_length <= _capacity / 2)
     {
         _capacity /= 2;
-        T* data = new T[_capacity];
+        T *data = new T[_capacity];
         for (int i = 0; i < _length; i++)
         {
             data[i] = _data[i];
@@ -193,48 +190,101 @@ void MyVector<T>::pop_back()
     }
 }
 template <class T>
-void MyVector<T>::insert(int index, T element)
+void MyVector<T>::reserve(int count)
+{
+    if(_length + count > _capacity)
+    {
+        while (_length + count > _capacity)
+        {
+            _capacity *= 2;
+        }
+        T *data = new T[_capacity];
+        for (int i = 0; i < _length; i++)
+        {
+            data[i] = _data[i];
+        }
+        delete[] _data;
+        _data = data;
+    }
+}
+template <class T>
+void MyVector<T>::shrink()
+{
+    if(_length == 0)
+    {
+        clear();
+        return;
+    }
+    if (_length < _capacity / 2)
+    {
+        while (_length < _capacity / 2)
+        {
+            _capacity /= 2;
+        }
+        T *data = new T[_capacity];
+        for (int i = 0; i < _length; i++)
+        {
+            data[i] = _data[i];
+        }
+        delete[] _data;
+        _data = data;
+    }
+}
+template <class T>
+void MyVector<T>::insert(int index, T element, int count)
 {
     if (index >= _length + 1 || index < 0)
     {
         throw "invalid insert index";
     }
-    push_back(element);
-    for (int i = _length - 1; i >= index + 1; i--)
+    reserve(count);
+    _length += count;
+    for (int i = _length - 1; i >= index + count; i--)
     {
         _data[i] = _data[i - 1];
     }
-    _data[index] = element;
-}
-template <class T>
-void MyVector<T>::insert(int index, T* element, int count)
-{
-    for (int i = 0; i < count; i++)
-    {
-        push_back(element[0]);
-    }
     for (int i = index; i < index + count; i++)
     {
-        _data[i + count] = _data[i];
-        _data[i] = element[i - index];
+        _data[i] = element;
     }
 }
 template <class T>
-void MyVector<T>::insert(int index, const MyVector<T>& vector)
+void MyVector<T>::insert(int index, T* array, int length)
+{
+    if (index >= _length + 1 || index < 0)
+    {
+        throw "invalid insert index";
+    }
+    reserve(length);
+    _length += length;
+    for (int i = index; i < index + length; i++)
+    {
+        _data[i + length] = _data[i];
+        _data[i] = array[i - index];
+    }
+}
+template <class T>
+void MyVector<T>::insert(int index, const MyVector<T> &vector)
 {
     insert(index, vector._data, vector._length);
 }
 template <class T>
 void MyVector<T>::erase(int index, int count)
 {
+    if (index < 0 || index >= _length)
+    {
+        throw "invalid erase index";
+    }
+    if(count + index >= _length)
+    {
+        count = _length - index;
+    }
     for (int i = index; i + count < _length; i++)
     {
         _data[i] = _data[i + count];
     }
-    for (int i = 0; i < count; i++)
-    {
-        pop_back();
-    }
+    _length -= count;
+    shrink();
 }
 
 template <class T>
@@ -257,7 +307,7 @@ int main()
     vector.pop_back();
     printVector(vector);
     vector.clear();
-    int a[3] = { 1, 4, 7 };
+    int a[3] = {1, 4, 7};
     MyVector<int> vector2(a, 3);
     printVector(vector2);
     vector = vector2;
@@ -279,5 +329,10 @@ int main()
     vector.insert(0, a, 3);
     vector3.insert(0, vector);
     printVector(vector3);
+    vector.insert(2, 555, 8);
+    printVector(vector);
+    vector.erase(0, 213133);
+    printVector(vector);
+    std::cout << vector.capacity() << std::endl;
     return 0;
 }
